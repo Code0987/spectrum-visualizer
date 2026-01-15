@@ -960,46 +960,32 @@ input[type="range"]::-webkit-slider-thumb:hover {
    ============================================ */
 
 /* Hide ALL UI elements in fullscreen immediately */
-:fullscreen .header,
-:-webkit-full-screen .header,
-:-moz-full-screen .header {
+.is-fullscreen .header {
     display: none !important;
 }
 
-:fullscreen .sidebar,
-:-webkit-full-screen .sidebar,
-:-moz-full-screen .sidebar {
+.is-fullscreen .sidebar {
     display: none !important;
 }
 
-:fullscreen .settings-panel,
-:-webkit-full-screen .settings-panel,
-:-moz-full-screen .settings-panel {
+.is-fullscreen .settings-panel {
     display: none !important;
 }
 
-:fullscreen .drop-zone,
-:-webkit-full-screen .drop-zone,
-:-moz-full-screen .drop-zone {
+.is-fullscreen .drop-zone {
     display: none !important;
 }
 
-:fullscreen .modal,
-:-webkit-full-screen .modal,
-:-moz-full-screen .modal {
+.is-fullscreen .modal {
     display: none !important;
 }
 
 /* Make canvas container fill the screen */
-:fullscreen .main-content,
-:-webkit-full-screen .main-content,
-:-moz-full-screen .main-content {
+.is-fullscreen .main-content {
     height: 100vh;
 }
 
-:fullscreen .canvas-container,
-:-webkit-full-screen .canvas-container,
-:-moz-full-screen .canvas-container {
+.is-fullscreen .canvas-container {
     position: fixed;
     top: 0;
     left: 0;
@@ -1028,9 +1014,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     pointer-events: none;
 }
 
-:fullscreen .fullscreen-hint,
-:-webkit-full-screen .fullscreen-hint,
-:-moz-full-screen .fullscreen-hint {
+.is-fullscreen .fullscreen-hint {
     opacity: 1;
     visibility: visible;
     animation: fadeOutHint 3s ease forwards;
@@ -1058,14 +1042,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 /* Cursor hide in fullscreen after inactivity */
-:fullscreen.hide-cursor,
-:-webkit-full-screen.hide-cursor,
-:-moz-full-screen.hide-cursor {
-    cursor: none;
-}
-
-:fullscreen.hide-cursor .canvas-container,
-:-webkit-full-screen.hide-cursor .canvas-container,
-:-moz-full-screen.hide-cursor .canvas-container {
-    cursor: none;
+.is-fullscreen.hide-cursor,
+.is-fullscreen.hide-cursor * {
+    cursor: none !important;
 }

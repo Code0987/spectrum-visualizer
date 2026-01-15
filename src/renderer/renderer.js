@@ -613,24 +613,50 @@ class App {
     // Fullscreen
     toggleFullscreen() {
         if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen();
-            this.setupFullscreenHandlers();
+            document.documentElement
+                .requestFullscreen()
+                .then(() => {
+                    this.enterFullscreenMode();
+                })
+                .catch(() => {
+                    // Fallback: just add the class anyway
+                    this.enterFullscreenMode();
+                });
         } else {
-            document.exitFullscreen();
+            document
+                .exitFullscreen()
+                .then(() => {
+                    this.exitFullscreenMode();
+                })
+                .catch(() => {
+                    this.exitFullscreenMode();
+                });
+        }
+    }
+
+    enterFullscreenMode() {
+        document.body.classList.add("is-fullscreen");
+        this.setupFullscreenHandlers();
+    }
+
+    exitFullscreenMode() {
+        document.body.classList.remove("is-fullscreen", "hide-cursor");
+        if (this._fullscreenCleanup) {
+            this._fullscreenCleanup();
+            this._fullscreenCleanup = null;
         }
     }
 
     setupFullscreenHandlers() {
         // Track mouse movement for cursor visibility
         let mouseTimeout = null;
-        const html = document.documentElement;
 
         const hideCursor = () => {
-            html.classList.add("hide-cursor");
+            document.body.classList.add("hide-cursor");
         };
 
         const showCursor = () => {
-            html.classList.remove("hide-cursor");
+            document.body.classList.remove("hide-cursor");
 
             // Clear existing timeout
             if (mouseTimeout) clearTimeout(mouseTimeout);
@@ -640,25 +666,28 @@ class App {
         };
 
         const onMouseMove = () => {
-            if (!document.fullscreenElement) return;
+            if (!document.body.classList.contains("is-fullscreen")) return;
             showCursor();
         };
 
         const onFullscreenChange = () => {
             if (!document.fullscreenElement) {
-                // Exiting fullscreen - cleanup
-                html.classList.remove("hide-cursor");
-                document.removeEventListener("mousemove", onMouseMove);
-                document.removeEventListener(
-                    "fullscreenchange",
-                    onFullscreenChange,
-                );
-                if (mouseTimeout) clearTimeout(mouseTimeout);
+                this.exitFullscreenMode();
             }
         };
 
         document.addEventListener("mousemove", onMouseMove);
         document.addEventListener("fullscreenchange", onFullscreenChange);
+
+        // Store cleanup function
+        this._fullscreenCleanup = () => {
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener(
+                "fullscreenchange",
+                onFullscreenChange,
+            );
+            if (mouseTimeout) clearTimeout(mouseTimeout);
+        };
 
         // Initially hide cursor after a delay
         mouseTimeout = setTimeout(hideCursor, 3000);
@@ -782,7 +811,12 @@ class App {
                 break;
             case "Escape":
                 if (document.fullscreenElement) {
-                    document.exitFullscreen();
+                    document.exitFullscreen().then(() => {
+                        this.exitFullscreenMode();
+                    });
+                } else if (document.body.classList.contains("is-fullscreen")) {
+                    // Edge case: class is set but not in fullscreen
+                    this.exitFullscreenMode();
                 }
                 document
                     .getElementById("settings-panel")
