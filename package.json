@@ -1,0 +1,54 @@
+{
+  "name": "spectrum-visualizer",
+  "version": "1.0.0",
+  "description": "Real-time music spectrum visualizer with multiple visualization modes",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --enable-logging",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "keywords": [
+    "music",
+    "visualizer",
+    "spectrum",
+    "audio",
+    "electron"
+  ],
+  "author": "Spectrum Visualizer Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "three": "^0.160.0",
+    "chroma-js": "^2.4.2"
+  },
+  "build": {
+    "appId": "com.spectrum.visualizer",
+    "productName": "Spectrum Visualizer",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icons/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icons/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icons"
+    }
+  }
+}
