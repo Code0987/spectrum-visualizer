@@ -332,6 +332,13 @@ class App {
             backgroundColor: document.getElementById("bg-color").value,
             gradientBackground: document.getElementById("gradient-bg").checked,
         };
+
+        // Sync export settings
+        this.videoExporter.updateSettings({
+            resolution: document.getElementById("export-resolution").value,
+            fps: document.getElementById("export-fps").value,
+            format: document.getElementById("export-format").value,
+        });
     }
 
     setupDropZone() {

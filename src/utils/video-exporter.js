@@ -15,7 +15,7 @@ class VideoExporter {
         this.settings = {
             resolution: "1080",
             fps: 30,
-            format: "webm",
+            format: "mp4",
             bitrate: 8000000, // 8 Mbps
         };
 
