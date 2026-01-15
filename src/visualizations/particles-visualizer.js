@@ -144,7 +144,9 @@ class ParticlesVisualizer extends BaseVisualizer {
     }
 
     createExplosion(colors, intensity) {
-        const count = Math.floor(30 + intensity * 40);
+        const clampedIntensity = this.clamp(intensity, 0, 1);
+        // Limit explosion particle count to prevent lag spikes
+        const count = Math.min(Math.floor(30 + clampedIntensity * 40), 50);
         const x = this.centerX + (Math.random() - 0.5) * this.width * 0.3;
         const y = this.centerY + (Math.random() - 0.5) * this.height * 0.3;
 
@@ -152,7 +154,7 @@ class ParticlesVisualizer extends BaseVisualizer {
             if (this.particles.length >= this.maxParticles) break;
 
             const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
-            const speed = 3 + Math.random() * 8 * intensity;
+            const speed = 3 + Math.random() * 8 * clampedIntensity;
             const size = 2 + Math.random() * 4;
 
             this.particles.push({
@@ -593,26 +595,38 @@ class ParticlesVisualizer extends BaseVisualizer {
     }
 
     drawConstellation(colors, avg) {
-        const maxDist = 100 + avg * 60;
+        const clampedAvg = this.clamp(avg, 0, 1);
+        const maxDist = 100 + clampedAvg * 60;
         const minDist = 30;
+        // Limit particles checked to prevent O(n²) performance issues
+        const maxParticlesToCheck = Math.min(this.particles.length, 80);
 
         this.ctx.lineWidth = 0.5;
 
         // Connect nearby particles
-        for (let i = 0; i < Math.min(this.particles.length, 150); i++) {
+        for (let i = 0; i < maxParticlesToCheck; i++) {
             const p1 = this.particles[i];
+            // Skip if particle is out of bounds
+            if (!this.inBounds(p1.x, p1.y, 50)) continue;
 
-            for (let j = i + 1; j < Math.min(this.particles.length, 150); j++) {
+            for (let j = i + 1; j < maxParticlesToCheck; j++) {
                 const p2 = this.particles[j];
                 const dx = p1.x - p2.x;
                 const dy = p1.y - p2.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
+                // Early exit for far particles using squared distance
+                const distSq = dx * dx + dy * dy;
+                if (distSq > maxDist * maxDist) continue;
+
+                const dist = Math.sqrt(distSq);
 
                 if (dist > minDist && dist < maxDist) {
-                    const alpha =
+                    const alpha = this.clamp(
                         (1 - (dist - minDist) / (maxDist - minDist)) *
-                        0.2 *
-                        Math.min(p1.life, p2.life);
+                            0.2 *
+                            Math.min(p1.life, p2.life),
+                        0,
+                        1,
+                    );
 
                     this.ctx.beginPath();
                     this.ctx.moveTo(p1.x, p1.y);
@@ -674,16 +688,26 @@ class ParticlesVisualizer extends BaseVisualizer {
     drawFrequencyBars(data, colors, avg) {
         const barCount = 80;
         const barWidth = this.width / barCount;
-        const maxHeight = 40 + avg * 30;
+        const clampedAvg = this.clamp(avg, 0, 1);
+        const maxHeight = 40 + clampedAvg * 30;
         const samplesPerBar = Math.floor(data.length / barCount);
+        const clampedSensitivity = this.clamp(
+            this.settings.sensitivity,
+            0.1,
+            3.0,
+        );
 
         for (let i = 0; i < barCount; i++) {
             let sum = 0;
             for (let j = 0; j < samplesPerBar; j++) {
                 sum += data[i * samplesPerBar + j] || 0;
             }
-            const value = sum / samplesPerBar / 255;
-            const height = value * maxHeight * this.settings.sensitivity;
+            const value = this.clamp(sum / samplesPerBar / 255, 0, 1);
+            // Clamp height to prevent drawing outside canvas
+            const height = Math.min(
+                value * maxHeight * clampedSensitivity,
+                this.height * 0.3,
+            );
 
             const gradient = this.ctx.createLinearGradient(
                 0,

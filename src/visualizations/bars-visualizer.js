@@ -11,8 +11,14 @@ class BarsVisualizer extends BaseVisualizer {
     }
 
     draw(deltaTime) {
-        if (!this.width || !this.height) {
+        if (
+            !this.width ||
+            !this.height ||
+            this.width <= 0 ||
+            this.height <= 0
+        ) {
             this.handleResize();
+            this.clear();
             return;
         }
 
@@ -48,10 +54,20 @@ class BarsVisualizer extends BaseVisualizer {
         const maxHeight = this.height * 0.8;
         const baseY = this.height * 0.9;
 
+        // Calculate average for single glow application (more efficient)
+        const avgValue =
+            this.smoothedData.reduce((a, b) => a + b, 0) /
+            this.smoothedData.length /
+            255;
+        if (avgValue > 0.3 && this.settings.glowEffect) {
+            this.applyGlow(colors.primary, Math.min(avgValue * 15, 30));
+        }
+
         // Draw bars
         for (let i = 0; i < barCount; i++) {
-            const value = this.smoothedData[i] / 255;
-            const height = value * maxHeight;
+            const value = this.clamp(this.smoothedData[i] / 255, 0, 1);
+            // Clamp height to prevent out-of-bounds drawing
+            const height = Math.min(value * maxHeight, maxHeight);
             const x = startX + i * (barWidth + spacing);
             const y = baseY - height;
 
@@ -61,38 +77,38 @@ class BarsVisualizer extends BaseVisualizer {
             gradient.addColorStop(0.5, colors.secondary);
             gradient.addColorStop(1, colors.tertiary);
 
-            // Glow for high values
-            if (value > 0.5 && this.settings.glowEffect) {
-                this.applyGlow(colors.primary, value * 15);
-            }
-
             // Draw bar
             this.ctx.fillStyle = gradient;
             this.ctx.fillRect(x, y, barWidth, height);
 
-            // Peak indicator
-            const peakY = baseY - (this.peakData[i] / 255) * maxHeight;
+            // Peak indicator - clamp peak position
+            const peakValue = this.clamp(this.peakData[i] / 255, 0, 1);
+            const peakY = baseY - peakValue * maxHeight;
             this.ctx.fillStyle = colors.primary;
             this.ctx.fillRect(x, peakY - 2, barWidth, 2);
 
             // Mirror effect
             if (this.settings.mirrorEffect) {
                 this.ctx.globalAlpha = 0.3;
+                const mirrorHeight = Math.min(
+                    height * 0.4,
+                    this.height - baseY,
+                );
                 const mirrorGradient = this.ctx.createLinearGradient(
                     x,
                     baseY,
                     x,
-                    baseY + height * 0.4,
+                    baseY + mirrorHeight,
                 );
                 mirrorGradient.addColorStop(0, colors.primary);
                 mirrorGradient.addColorStop(1, "transparent");
                 this.ctx.fillStyle = mirrorGradient;
-                this.ctx.fillRect(x, baseY, barWidth, height * 0.4);
+                this.ctx.fillRect(x, baseY, barWidth, mirrorHeight);
                 this.ctx.globalAlpha = 1;
             }
-
-            this.resetGlow();
         }
+
+        this.resetGlow();
 
         // Floor line
         this.ctx.strokeStyle = `${colors.primary}40`;

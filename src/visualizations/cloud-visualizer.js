@@ -306,61 +306,71 @@ class CloudVisualizer extends BaseVisualizer {
         const points = 50;
         const amplitude = this.height * 0.3;
 
+        // Use save/restore to ensure composite operation is always reset
+        this.ctx.save();
         this.ctx.globalCompositeOperation = "screen";
 
-        for (let layer = 0; layer < 3; layer++) {
-            this.ctx.beginPath();
-            this.ctx.moveTo(0, this.centerY);
+        try {
+            for (let layer = 0; layer < 3; layer++) {
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, this.centerY);
 
-            for (let i = 0; i <= points; i++) {
-                const x = (i / points) * this.width;
-                const dataIndex = Math.floor((i / points) * data.length);
-                const value = (data[dataIndex] || 0) / 255;
-
-                const baseY =
-                    this.centerY + Math.sin(this.time + i * 0.1 + layer) * 50;
-                const audioOffset =
-                    value * amplitude * Math.sin(this.time * 0.5 + i * 0.2);
-                const y = baseY + audioOffset * (layer + 1) * 0.3;
-
-                if (i === 0) {
-                    this.ctx.moveTo(x, y);
-                } else {
-                    const prevX = ((i - 1) / points) * this.width;
-                    const cpX = (prevX + x) / 2;
-                    this.ctx.quadraticCurveTo(
-                        prevX,
-                        baseY + audioOffset,
-                        cpX,
-                        y,
+                for (let i = 0; i <= points; i++) {
+                    const x = (i / points) * this.width;
+                    const dataIndex = Math.floor((i / points) * data.length);
+                    const value = this.clamp(
+                        (data[dataIndex] || 0) / 255,
+                        0,
+                        1,
                     );
+
+                    const baseY =
+                        this.centerY +
+                        Math.sin(this.time + i * 0.1 + layer) * 50;
+                    const audioOffset =
+                        value * amplitude * Math.sin(this.time * 0.5 + i * 0.2);
+                    const y = baseY + audioOffset * (layer + 1) * 0.3;
+
+                    if (i === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        const prevX = ((i - 1) / points) * this.width;
+                        const cpX = (prevX + x) / 2;
+                        this.ctx.quadraticCurveTo(
+                            prevX,
+                            baseY + audioOffset,
+                            cpX,
+                            y,
+                        );
+                    }
                 }
+
+                this.ctx.lineTo(this.width, this.height);
+                this.ctx.lineTo(0, this.height);
+                this.ctx.closePath();
+
+                const gradient = this.ctx.createLinearGradient(
+                    0,
+                    this.centerY - amplitude,
+                    0,
+                    this.height,
+                );
+                const alpha = Math.floor(Math.max(0.1 - layer * 0.025, 0) * 255)
+                    .toString(16)
+                    .padStart(2, "0");
+                gradient.addColorStop(
+                    0,
+                    `${colors.gradient[layer % colors.gradient.length]}${alpha}`,
+                );
+                gradient.addColorStop(1, "transparent");
+
+                this.ctx.fillStyle = gradient;
+                this.ctx.fill();
             }
-
-            this.ctx.lineTo(this.width, this.height);
-            this.ctx.lineTo(0, this.height);
-            this.ctx.closePath();
-
-            const gradient = this.ctx.createLinearGradient(
-                0,
-                this.centerY - amplitude,
-                0,
-                this.height,
-            );
-            const alpha = Math.floor((0.1 - layer * 0.025) * 255)
-                .toString(16)
-                .padStart(2, "0");
-            gradient.addColorStop(
-                0,
-                `${colors.gradient[layer % colors.gradient.length]}${alpha}`,
-            );
-            gradient.addColorStop(1, "transparent");
-
-            this.ctx.fillStyle = gradient;
-            this.ctx.fill();
+        } finally {
+            // Always restore context state
+            this.ctx.restore();
         }
-
-        this.ctx.globalCompositeOperation = "source-over";
     }
 
     handleResize() {

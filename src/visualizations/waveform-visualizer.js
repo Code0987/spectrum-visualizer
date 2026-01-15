@@ -177,6 +177,11 @@ class WaveformVisualizer extends BaseVisualizer {
         const barCount = 32;
         const barWidth = this.width / barCount;
         const maxHeight = 30;
+        const clampedSensitivity = this.clamp(
+            this.settings.sensitivity,
+            0.1,
+            3.0,
+        );
 
         const samplesPerBar = Math.floor(data.length / barCount);
 
@@ -186,9 +191,13 @@ class WaveformVisualizer extends BaseVisualizer {
                 sum += data[i * samplesPerBar + j] || 0;
             }
             const avg = sum / samplesPerBar;
-            const height = (avg / 255) * maxHeight * this.settings.sensitivity;
+            // Clamp height to prevent out-of-bounds drawing
+            const height = Math.min(
+                (avg / 255) * maxHeight * clampedSensitivity,
+                maxHeight * 2,
+            );
 
-            const alpha = 0.3 + (avg / 255) * 0.4;
+            const alpha = this.clamp(0.3 + (avg / 255) * 0.4, 0, 1);
             this.ctx.fillStyle = `${colors.tertiary}${Math.floor(alpha * 255)
                 .toString(16)
                 .padStart(2, "0")}`;

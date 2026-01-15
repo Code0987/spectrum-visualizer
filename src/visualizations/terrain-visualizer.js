@@ -76,17 +76,27 @@ class TerrainVisualizer extends BaseVisualizer {
             }
         }
 
+        const clampedSensitivity = this.clamp(
+            this.settings.sensitivity,
+            0.1,
+            3.0,
+        );
+        const maxTerrainHeight = 200; // Prevent extreme terrain heights
+
         // Add new row based on frequency data
         for (let x = 0; x < this.terrainWidth; x++) {
             const dataIndex = Math.floor((x / this.terrainWidth) * data.length);
-            const value = (data[dataIndex] || 0) / 255;
+            const value = this.clamp((data[dataIndex] || 0) / 255, 0, 1);
 
             // Center has more height
             const centerFactor =
                 1 -
                 Math.abs(x - this.terrainWidth / 2) / (this.terrainWidth / 2);
-            const height =
-                value * 150 * centerFactor * this.settings.sensitivity;
+            // Clamp height to prevent rendering issues
+            const height = Math.min(
+                value * 150 * centerFactor * clampedSensitivity,
+                maxTerrainHeight,
+            );
 
             this.terrain[0][x] = height;
         }

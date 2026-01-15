@@ -185,8 +185,10 @@ class CircularVisualizer extends BaseVisualizer {
     }
 
     updateOrbitParticles(colors, bass, mid, treble) {
-        // Spawn orbit particles
-        if (this.orbitParticles.length < 30) {
+        const maxOrbitParticles = 30;
+
+        // Spawn orbit particles only if under limit
+        if (this.orbitParticles.length < maxOrbitParticles) {
             const orbit = Math.floor(Math.random() * 3);
             const radius =
                 Math.min(this.width, this.height) * (0.2 + orbit * 0.1);
@@ -203,15 +205,25 @@ class CircularVisualizer extends BaseVisualizer {
             });
         }
 
+        // Trim excess particles if any
+        if (this.orbitParticles.length > maxOrbitParticles) {
+            this.orbitParticles.length = maxOrbitParticles;
+        }
+
         // Draw orbit particles
         this.ctx.save();
         this.ctx.translate(this.centerX, this.centerY);
 
-        for (const p of this.orbitParticles) {
-            p.angle += p.speed * 0.02 * this.settings.animationSpeed;
+        const clampedSpeed = this.clamp(this.settings.animationSpeed, 0.1, 3.0);
 
-            const audioMod =
-                p.orbit === 0 ? bass : p.orbit === 1 ? mid : treble;
+        for (const p of this.orbitParticles) {
+            p.angle += p.speed * 0.02 * clampedSpeed;
+
+            const audioMod = this.clamp(
+                p.orbit === 0 ? bass : p.orbit === 1 ? mid : treble,
+                0,
+                1,
+            );
             const currentRadius = p.radius * (1 + audioMod * 0.2);
 
             const x = Math.cos(p.angle) * currentRadius;
@@ -245,9 +257,15 @@ class CircularVisualizer extends BaseVisualizer {
 
     drawFrequencyArcs(data, colors, bass) {
         const innerRadius = Math.min(this.width, this.height) * 0.42;
+        const maxArcExtension = Math.min(this.width, this.height) * 0.08; // Limit arc extension
         const arcCount = 32;
         const arcGap = (Math.PI * 2) / arcCount;
         const arcWidth = arcGap * 0.7;
+        const clampedSensitivity = this.clamp(
+            this.settings.sensitivity,
+            0.1,
+            3.0,
+        );
 
         this.ctx.save();
         this.ctx.translate(this.centerX, this.centerY);
@@ -255,10 +273,14 @@ class CircularVisualizer extends BaseVisualizer {
 
         for (let i = 0; i < arcCount; i++) {
             const dataIndex = Math.floor((i / arcCount) * data.length);
-            const value = (data[dataIndex] || 0) / 255;
+            const value = this.clamp((data[dataIndex] || 0) / 255, 0, 1);
             const startAngle = i * arcGap;
             const endAngle = startAngle + arcWidth;
-            const arcLength = value * 25 + 5;
+            // Clamp arc length to prevent out-of-bounds drawing
+            const arcLength = Math.min(
+                value * 25 * clampedSensitivity + 5,
+                maxArcExtension,
+            );
 
             const gradient = this.ctx.createLinearGradient(
                 Math.cos(startAngle) * innerRadius,
@@ -294,15 +316,31 @@ class CircularVisualizer extends BaseVisualizer {
         const innerRadius = Math.min(this.width, this.height) * 0.14;
         const maxBarLength = Math.min(this.width, this.height) * 0.22;
         const barCount = data.length;
+        // Clamp sensitivity to prevent out-of-bounds drawing
+        const clampedSensitivity = this.clamp(
+            this.settings.sensitivity,
+            0.1,
+            3.0,
+        );
 
         this.ctx.save();
         this.ctx.translate(this.centerX, this.centerY);
         this.ctx.rotate(this.rotation);
 
+        // Apply glow once for the entire bar set (more efficient)
+        const avgValue = data.reduce((a, b) => a + b, 0) / data.length / 255;
+        if (avgValue > 0.3) {
+            this.applyGlow(colors.primary, Math.min(8 + avgValue * 12, 30));
+        }
+
         for (let i = 0; i < barCount; i++) {
             const angle = (i / barCount) * Math.PI * 2 - Math.PI / 2;
-            const value = data[i] / 255;
-            const barLength = value * maxBarLength * this.settings.sensitivity;
+            const value = this.clamp(data[i] / 255, 0, 1);
+            // Clamp barLength to prevent drawing far outside canvas
+            const barLength = Math.min(
+                value * maxBarLength * clampedSensitivity,
+                maxBarLength * 1.5,
+            );
 
             const x1 = Math.cos(angle) * innerRadius;
             const y1 = Math.sin(angle) * innerRadius;
@@ -314,11 +352,6 @@ class CircularVisualizer extends BaseVisualizer {
             gradient.addColorStop(0, colors.primary);
             gradient.addColorStop(0.6, colors.secondary);
             gradient.addColorStop(1, colors.tertiary);
-
-            // Apply glow for high values
-            if (value > 0.5) {
-                this.applyGlow(colors.primary, 8 + value * 12);
-            }
 
             this.ctx.beginPath();
             this.ctx.moveTo(x1, y1);
@@ -337,13 +370,20 @@ class CircularVisualizer extends BaseVisualizer {
             }
         }
 
-        this.ctx.restore();
         this.resetGlow();
+        this.ctx.restore();
     }
 
     drawInnerWaveform(data, colors, mid) {
         const radius = Math.min(this.width, this.height) * 0.11;
+        const maxWaveExtension = radius * 0.5; // Limit wave extension
         const barCount = data.length;
+        const clampedMid = this.clamp(mid, 0, 1);
+        const clampedSensitivity = this.clamp(
+            this.settings.sensitivity,
+            0.1,
+            3.0,
+        );
 
         this.ctx.save();
         this.ctx.translate(this.centerX, this.centerY);
@@ -353,9 +393,15 @@ class CircularVisualizer extends BaseVisualizer {
         this.ctx.beginPath();
         for (let i = 0; i <= barCount; i++) {
             const angle = (i / barCount) * Math.PI * 2;
-            const value = data[i % barCount] / 255;
-            const wave = Math.sin(angle * 6 + this.wavePhase * 2) * 8 * mid;
-            const r = radius + value * 25 + wave;
+            const value = this.clamp(data[i % barCount] / 255, 0, 1);
+            const wave =
+                Math.sin(angle * 6 + this.wavePhase * 2) * 8 * clampedMid;
+            // Clamp r to prevent out-of-bounds drawing
+            const extension = Math.min(
+                value * 25 * clampedSensitivity + wave,
+                maxWaveExtension,
+            );
+            const r = radius + extension;
 
             const x = Math.cos(angle) * r;
             const y = Math.sin(angle) * r;
@@ -366,8 +412,16 @@ class CircularVisualizer extends BaseVisualizer {
                 // Smooth curve using quadratic bezier
                 const prevAngle = ((i - 1) / barCount) * Math.PI * 2;
                 const midAngle = (angle + prevAngle) / 2;
-                const prevValue = data[(i - 1) % barCount] / 255;
-                const midR = radius + ((value + prevValue) / 2) * 25;
+                const prevValue = this.clamp(
+                    data[(i - 1) % barCount] / 255,
+                    0,
+                    1,
+                );
+                const midExtension = Math.min(
+                    ((value + prevValue) / 2) * 25 * clampedSensitivity,
+                    maxWaveExtension,
+                );
+                const midR = radius + midExtension;
                 const cpX = Math.cos(midAngle) * midR;
                 const cpY = Math.sin(midAngle) * midR;
                 this.ctx.quadraticCurveTo(cpX, cpY, x, y);
@@ -377,13 +431,14 @@ class CircularVisualizer extends BaseVisualizer {
         this.ctx.closePath();
 
         // Gradient stroke
+        const maxRadius = radius + maxWaveExtension;
         const strokeGradient = this.ctx.createRadialGradient(
             0,
             0,
             radius * 0.5,
             0,
             0,
-            radius + 25,
+            maxRadius,
         );
         strokeGradient.addColorStop(0, colors.secondary);
         strokeGradient.addColorStop(1, colors.primary);
@@ -400,7 +455,7 @@ class CircularVisualizer extends BaseVisualizer {
             0,
             0,
             0,
-            radius + 25,
+            maxRadius,
         );
         fillGradient.addColorStop(0, `${colors.primary}15`);
         fillGradient.addColorStop(0.7, `${colors.secondary}08`);
@@ -408,19 +463,23 @@ class CircularVisualizer extends BaseVisualizer {
         this.ctx.fillStyle = fillGradient;
         this.ctx.fill();
 
-        this.ctx.restore();
         this.resetGlow();
+        this.ctx.restore();
     }
 
     drawReactiveCenter(colors, bands) {
-        const bass = bands.bass / 255;
-        const mid = bands.mid / 255;
-        const treble = bands.treble / 255;
+        const bass = this.clamp(bands.bass / 255, 0, 1);
+        const mid = this.clamp(bands.mid / 255, 0, 1);
+        const treble = this.clamp(bands.treble / 255, 0, 1);
         const avg = (bass + mid + treble) / 3;
 
         const maxRadius = Math.min(this.width, this.height) * 0.07;
         const pulseScale = 1 + Math.sin(this.pulsePhase) * 0.15 * bass;
-        const radius = maxRadius * (0.6 + avg * 0.4) * pulseScale;
+        // Clamp radius to prevent excessive size
+        const radius = Math.min(
+            maxRadius * (0.6 + avg * 0.4) * pulseScale,
+            maxRadius * 1.5,
+        );
 
         this.ctx.save();
         this.ctx.translate(this.centerX, this.centerY);
@@ -428,7 +487,7 @@ class CircularVisualizer extends BaseVisualizer {
         // Outer glow rings
         for (let i = 3; i >= 0; i--) {
             const ringRadius = radius * (1.5 + i * 0.3);
-            const alpha = ((3 - i) / 10) * bass;
+            const alpha = this.clamp(((3 - i) / 10) * bass, 0, 1);
 
             this.ctx.beginPath();
             this.ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
@@ -439,7 +498,7 @@ class CircularVisualizer extends BaseVisualizer {
             this.ctx.stroke();
         }
 
-        // Main gradient circle
+        // Main gradient circle - clamp glow blur value
         const mainGradient = this.ctx.createRadialGradient(
             0,
             0,
@@ -453,7 +512,8 @@ class CircularVisualizer extends BaseVisualizer {
         mainGradient.addColorStop(0.7, colors.secondary);
         mainGradient.addColorStop(1, `${colors.primary}00`);
 
-        this.applyGlow(colors.primary, 25 + bass * 20);
+        // Clamp glow blur to prevent GPU strain
+        this.applyGlow(colors.primary, Math.min(25 + bass * 20, 50));
         this.ctx.beginPath();
         this.ctx.arc(0, 0, radius, 0, Math.PI * 2);
         this.ctx.fillStyle = mainGradient;
@@ -478,8 +538,8 @@ class CircularVisualizer extends BaseVisualizer {
         this.ctx.fillStyle = coreGradient;
         this.ctx.fill();
 
-        this.ctx.restore();
         this.resetGlow();
+        this.ctx.restore();
     }
 
     drawMirroredBars(data, colors, intensity) {
@@ -515,12 +575,23 @@ class CircularVisualizer extends BaseVisualizer {
     }
 
     updateAndDrawParticles(colors, bass) {
-        // Spawn burst particles on bass hits
-        if (bass > 0.7 && Math.random() < bass * 0.5) {
-            const count = Math.floor(3 + bass * 5);
+        const maxParticles = 80;
+        const clampedBass = this.clamp(bass, 0, 1);
+        const clampedSpeed = this.clamp(this.settings.animationSpeed, 0.1, 3.0);
+
+        // Spawn burst particles on bass hits - only if under limit
+        if (
+            clampedBass > 0.7 &&
+            Math.random() < clampedBass * 0.5 &&
+            this.particles.length < maxParticles
+        ) {
+            const count = Math.min(
+                Math.floor(3 + clampedBass * 5),
+                maxParticles - this.particles.length,
+            );
             for (let i = 0; i < count; i++) {
                 const angle = Math.random() * Math.PI * 2;
-                const speed = 2 + Math.random() * 4 * bass;
+                const speed = 2 + Math.random() * 4 * clampedBass;
                 this.particles.push({
                     x: this.centerX,
                     y: this.centerY,
@@ -535,21 +606,22 @@ class CircularVisualizer extends BaseVisualizer {
             }
         }
 
-        // Limit particles
-        if (this.particles.length > 80) {
-            this.particles.splice(0, this.particles.length - 80);
+        // Trim excess particles
+        if (this.particles.length > maxParticles) {
+            this.particles.length = maxParticles;
         }
 
         // Update and draw
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
-            p.x += p.vx * this.settings.animationSpeed;
-            p.y += p.vy * this.settings.animationSpeed;
+            p.x += p.vx * clampedSpeed;
+            p.y += p.vy * clampedSpeed;
             p.vx *= 0.98;
             p.vy *= 0.98;
             p.life -= 0.015;
 
-            if (p.life <= 0) {
+            // Remove dead or out-of-bounds particles
+            if (p.life <= 0 || !this.inBounds(p.x, p.y, 100)) {
                 this.particles.splice(i, 1);
                 continue;
             }

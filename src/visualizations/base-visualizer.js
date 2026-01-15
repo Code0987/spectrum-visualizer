@@ -134,6 +134,24 @@ class BaseVisualizer {
      * Update settings
      */
     updateSettings(newSettings) {
+        // Clamp sensitive values to prevent rendering issues
+        if (newSettings.sensitivity !== undefined) {
+            newSettings.sensitivity = this.clamp(
+                newSettings.sensitivity,
+                0.1,
+                5.0,
+            );
+        }
+        if (newSettings.animationSpeed !== undefined) {
+            newSettings.animationSpeed = this.clamp(
+                newSettings.animationSpeed,
+                0.1,
+                5.0,
+            );
+        }
+        if (newSettings.barCount !== undefined) {
+            newSettings.barCount = this.clamp(newSettings.barCount, 8, 256);
+        }
         Object.assign(this.settings, newSettings);
     }
 
@@ -201,7 +219,8 @@ class BaseVisualizer {
     applyGlow(color, blur = 20) {
         if (this.settings.glowEffect) {
             this.ctx.shadowColor = color;
-            this.ctx.shadowBlur = blur;
+            // Clamp shadowBlur to prevent GPU strain - values over 100 cause severe lag
+            this.ctx.shadowBlur = Math.min(blur, 100);
         } else {
             this.ctx.shadowColor = "transparent";
             this.ctx.shadowBlur = 0;
@@ -328,12 +347,32 @@ class BaseVisualizer {
         if (!this.isRunning) return;
 
         const now = performance.now();
-        const deltaTime = (now - this.lastFrameTime) / 1000;
+        const deltaTime = Math.min((now - this.lastFrameTime) / 1000, 0.1); // Cap deltaTime to prevent huge jumps
         this.lastFrameTime = now;
         this.time += deltaTime * this.settings.animationSpeed;
 
-        this.clear();
-        this.draw(deltaTime);
+        try {
+            // Save context state before drawing
+            this.ctx.save();
+
+            // Reset any problematic state
+            this.ctx.globalAlpha = 1;
+            this.ctx.globalCompositeOperation = "source-over";
+            this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+            this.clear();
+            this.draw(deltaTime);
+
+            // Restore context state
+            this.ctx.restore();
+        } catch (error) {
+            console.error("Visualization draw error:", error);
+            // Reset context on error
+            this.ctx.restore();
+            this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+            this.ctx.globalAlpha = 1;
+            this.ctx.globalCompositeOperation = "source-over";
+        }
 
         this.animationId = requestAnimationFrame(() => this.animate());
     }
@@ -343,6 +382,40 @@ class BaseVisualizer {
      */
     draw(deltaTime) {
         // Override in subclass
+    }
+
+    /**
+     * Clamp a value between min and max
+     */
+    clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    /**
+     * Check if a point is within canvas bounds
+     */
+    inBounds(x, y, margin = 0) {
+        return (
+            x >= -margin &&
+            x <= this.width + margin &&
+            y >= -margin &&
+            y <= this.height + margin
+        );
+    }
+
+    /**
+     * Get clamped sensitivity - prevents extreme values from causing out-of-bounds drawing
+     */
+    getClampedSensitivity() {
+        return this.clamp(this.settings.sensitivity, 0.1, 3.0);
+    }
+
+    /**
+     * Apply sensitivity to a value with automatic clamping to prevent overflow
+     */
+    applySensitivity(value, maxResult) {
+        const result = value * this.getClampedSensitivity();
+        return Math.min(result, maxResult);
     }
 
     /**
