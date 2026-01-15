@@ -1,329 +1,550 @@
 /**
  * Psychedelic Visualizer
- * Trippy, colorful patterns with mandala effects
+ * Advanced trippy visuals with sacred geometry, fractals, and fluid dynamics
  */
 
 class PsychedelicVisualizer extends BaseVisualizer {
-  constructor(canvas, audioProcessor) {
-    super(canvas, audioProcessor);
-    this.hueOffset = 0;
-    this.kaleidoscopeAngle = 0;
-    this.layers = [];
-    this.spiralAngle = 0;
-    this.tunnelPhase = 0;
-    this.initLayers();
-  }
-
-  initLayers() {
-    this.layers = [];
-    for (let i = 0; i < 5; i++) {
-      this.layers.push({
-        rotation: Math.random() * Math.PI * 2,
-        scale: 0.5 + Math.random() * 0.5,
-        hueShift: Math.random() * 360,
-        segments: 6 + Math.floor(Math.random() * 6),
-        type: ['mandala', 'spiral', 'tunnel', 'wave'][Math.floor(Math.random() * 4)]
-      });
+    constructor(canvas, audioProcessor) {
+        super(canvas, audioProcessor);
+        this.hueOffset = 0;
+        this.phase = 0;
+        this.warpPhase = 0;
+        this.flowerRotation = 0;
+        this.breathScale = 1;
+        this.noiseOffset = 0;
+        this.trails = [];
+        this.maxTrails = 8;
+        this.lastFrameData = null;
     }
-  }
 
-  draw(deltaTime) {
-    const frequencyData = this.audioProcessor.getFrequencyData();
-    const timeDomainData = this.audioProcessor.getTimeDomainData();
-    const bands = this.audioProcessor.getFrequencyBands();
-    const colors = this.getColors();
-    const avg = this.audioProcessor.getAverageFrequency() / 255;
+    draw(deltaTime) {
+        const frequencyData = this.audioProcessor.getFrequencyData();
+        const timeDomainData = this.audioProcessor.getTimeDomainData();
+        const bands = this.audioProcessor.getFrequencyBands();
+        const avg = this.audioProcessor.getAverageFrequency() / 255;
+        const bass = bands.bass / 255;
+        const mid = bands.mid / 255;
+        const treble = bands.treble / 255;
 
-    const speed = this.settings.animationSpeed;
+        const speed = this.settings.animationSpeed;
 
-    // Update animation values
-    this.hueOffset += deltaTime * 30 * speed * (0.5 + avg);
-    this.kaleidoscopeAngle += deltaTime * 0.3 * speed;
-    this.spiralAngle += deltaTime * speed * (1 + avg);
-    this.tunnelPhase += deltaTime * 2 * speed;
+        // Update animation phases
+        this.hueOffset += deltaTime * 25 * speed * (0.3 + avg * 0.7);
+        this.phase += deltaTime * speed * (1 + bass * 2);
+        this.warpPhase += deltaTime * 0.5 * speed;
+        this.flowerRotation += deltaTime * 0.2 * speed * (1 + mid);
+        this.breathScale = 1 + Math.sin(this.time * 2) * 0.1 * (1 + bass);
+        this.noiseOffset += deltaTime * 50;
 
-    // Draw psychedelic background
-    this.drawBackground(colors, avg);
+        // Create motion blur / trail effect
+        this.ctx.fillStyle = `rgba(10, 10, 15, ${0.15 + (1 - avg) * 0.15})`;
+        this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // Draw tunnel effect
-    this.drawTunnel(frequencyData, colors, avg);
+        // Layer 1: Deep space warp background
+        this.drawWarpField(bass, mid);
 
-    // Draw mandala patterns
-    this.drawMandala(frequencyData, colors, bands);
+        // Layer 2: Flowing energy ribbons
+        this.drawEnergyRibbons(frequencyData, bass, mid, treble);
 
-    // Draw spiral waves
-    this.drawSpiralWaves(frequencyData, colors, avg);
+        // Layer 3: Sacred geometry flower of life
+        this.drawSacredGeometry(frequencyData, bass, mid);
 
-    // Draw kaleidoscope overlay
-    this.drawKaleidoscope(timeDomainData, colors, avg);
+        // Layer 4: Fractal spirograph
+        this.drawFractalSpirograph(frequencyData, avg);
 
-    // Draw pulsing rings
-    this.drawPulsingRings(bands, colors);
+        // Layer 5: Reactive kaleidoscope
+        this.drawKaleidoscope(timeDomainData, bass, mid, treble);
 
-    // Apply color shift overlay
-    this.applyColorShift(avg);
-  }
+        // Layer 6: Central mandala
+        this.drawCentralMandala(frequencyData, bands);
 
-  drawBackground(colors, intensity) {
-    // Animated gradient background
-    const time = this.time;
+        // Layer 7: Particle aurora
+        this.drawAurora(frequencyData, bass, treble);
 
-    for (let i = 0; i < 3; i++) {
-      const x = this.centerX + Math.sin(time * 0.5 + i * 2) * this.width * 0.3;
-      const y = this.centerY + Math.cos(time * 0.3 + i * 2) * this.height * 0.3;
-      const radius = Math.max(this.width, this.height) * (0.3 + intensity * 0.2);
+        // Layer 8: Chromatic aberration effect
+        this.applyChromaEffect(avg);
 
-      const hue = (this.hueOffset + i * 120) % 360;
-      const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, radius);
-      gradient.addColorStop(0, `hsla(${hue}, 100%, 50%, ${0.15 + intensity * 0.1})`);
-      gradient.addColorStop(0.5, `hsla(${(hue + 60) % 360}, 100%, 50%, ${0.05 + intensity * 0.05})`);
-      gradient.addColorStop(1, 'transparent');
-
-      this.ctx.fillStyle = gradient;
-      this.ctx.fillRect(0, 0, this.width, this.height);
+        // Store frame for next iteration
+        this.lastFrameData = { bass, mid, treble, avg };
     }
-  }
 
-  drawTunnel(data, colors, intensity) {
-    const ringCount = 15;
-    const maxRadius = Math.min(this.width, this.height) * 0.6;
+    drawWarpField(bass, mid) {
+        const lineCount = 60;
+        const maxLen = Math.max(this.width, this.height) * 0.8;
 
-    this.ctx.save();
-    this.ctx.translate(this.centerX, this.centerY);
+        this.ctx.save();
+        this.ctx.translate(this.centerX, this.centerY);
+        this.ctx.rotate(this.warpPhase * 0.1);
 
-    for (let i = ringCount - 1; i >= 0; i--) {
-      const progress = (i + this.tunnelPhase) % ringCount;
-      const t = progress / ringCount;
-      const radius = t * maxRadius;
+        for (let i = 0; i < lineCount; i++) {
+            const angle = (i / lineCount) * Math.PI * 2;
+            const waveOffset = Math.sin(angle * 3 + this.phase) * 50 * bass;
+            const len = maxLen * (0.3 + mid * 0.7) + waveOffset;
 
-      if (radius < 10) continue;
+            const hue = (this.hueOffset + i * 6) % 360;
+            const alpha = 0.1 + bass * 0.2;
 
-      const dataIndex = Math.floor(t * data.length);
-      const audioValue = (data[dataIndex] || 128) / 255;
+            const gradient = this.ctx.createLinearGradient(
+                0,
+                0,
+                Math.cos(angle) * len,
+                Math.sin(angle) * len,
+            );
+            gradient.addColorStop(0, "transparent");
+            gradient.addColorStop(0.3, `hsla(${hue}, 100%, 60%, ${alpha})`);
+            gradient.addColorStop(
+                0.7,
+                `hsla(${(hue + 60) % 360}, 100%, 50%, ${alpha * 0.5})`,
+            );
+            gradient.addColorStop(1, "transparent");
 
-      const hue = (this.hueOffset + i * 25) % 360;
-      const alpha = (1 - t) * (0.3 + audioValue * 0.3);
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, 0);
 
-      this.ctx.beginPath();
+            // Curved warp lines
+            const cp1x = Math.cos(angle + 0.2) * len * 0.5;
+            const cp1y = Math.sin(angle + 0.2) * len * 0.5;
+            const cp2x = Math.cos(angle - 0.1) * len * 0.8;
+            const cp2y = Math.sin(angle - 0.1) * len * 0.8;
+            const endX = Math.cos(angle) * len;
+            const endY = Math.sin(angle) * len;
 
-      const segments = 12;
-      for (let j = 0; j <= segments; j++) {
-        const angle = (j / segments) * Math.PI * 2 + this.kaleidoscopeAngle;
-        const wobble = Math.sin(angle * 6 + this.time * 3) * audioValue * 20;
-        const r = radius + wobble;
+            this.ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
 
-        const x = Math.cos(angle) * r;
-        const y = Math.sin(angle) * r;
-
-        if (j === 0) {
-          this.ctx.moveTo(x, y);
-        } else {
-          this.ctx.lineTo(x, y);
+            this.ctx.strokeStyle = gradient;
+            this.ctx.lineWidth = 1 + bass * 2;
+            this.ctx.stroke();
         }
-      }
 
-      this.ctx.closePath();
-      this.ctx.strokeStyle = `hsla(${hue}, 100%, 60%, ${alpha})`;
-      this.ctx.lineWidth = 2 + audioValue * 3;
-      this.ctx.stroke();
+        this.ctx.restore();
     }
 
-    this.ctx.restore();
-  }
+    drawEnergyRibbons(data, bass, mid, treble) {
+        const ribbonCount = 5;
+        const points = 80;
 
-  drawMandala(data, colors, bands) {
-    const segments = 12;
-    const layers = 5;
-    const maxRadius = Math.min(this.width, this.height) * 0.35;
+        this.ctx.save();
+        this.ctx.translate(this.centerX, this.centerY);
 
-    this.ctx.save();
-    this.ctx.translate(this.centerX, this.centerY);
-    this.ctx.rotate(this.kaleidoscopeAngle * 0.5);
+        for (let r = 0; r < ribbonCount; r++) {
+            const ribbonPhase = this.phase + r * Math.PI * 0.4;
+            const baseRadius =
+                Math.min(this.width, this.height) * (0.2 + r * 0.08);
 
-    for (let layer = 0; layer < layers; layer++) {
-      const layerRadius = maxRadius * ((layer + 1) / layers);
-      const layerData = [];
+            this.ctx.beginPath();
 
-      // Sample audio data for this layer
-      for (let i = 0; i < segments; i++) {
-        const dataIndex = Math.floor((i / segments) * data.length * 0.5 + layer * 20);
-        layerData.push((data[dataIndex] || 0) / 255);
-      }
+            for (let i = 0; i <= points; i++) {
+                const t = i / points;
+                const angle = t * Math.PI * 4 + ribbonPhase;
 
-      this.ctx.beginPath();
+                const dataIdx = Math.floor(t * data.length * 0.8);
+                const audioMod = (data[dataIdx] || 0) / 255;
 
-      for (let i = 0; i <= segments; i++) {
-        const angle = (i / segments) * Math.PI * 2;
-        const audioMod = layerData[i % segments];
-        const radius = layerRadius * (0.8 + audioMod * 0.4);
+                const radiusWave =
+                    Math.sin(angle * 3 + this.time * 2) * 30 * mid;
+                const audioWave = audioMod * 50;
+                const radius = baseRadius + radiusWave + audioWave;
 
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
+                const x = Math.cos(angle) * radius * Math.cos(t * Math.PI);
+                const y = Math.sin(angle) * radius;
 
-        if (i === 0) {
-          this.ctx.moveTo(x, y);
-        } else {
-          // Curved segments
-          const prevAngle = ((i - 1) / segments) * Math.PI * 2;
-          const cpAngle = (angle + prevAngle) / 2;
-          const cpRadius = layerRadius * (1 + audioMod * 0.2);
-          const cpX = Math.cos(cpAngle) * cpRadius;
-          const cpY = Math.sin(cpAngle) * cpRadius;
-          this.ctx.quadraticCurveTo(cpX, cpY, x, y);
+                if (i === 0) {
+                    this.ctx.moveTo(x, y);
+                } else {
+                    this.ctx.lineTo(x, y);
+                }
+            }
+
+            const hue = (this.hueOffset + r * 72) % 360;
+            const alpha = 0.4 + audioMod * 0.4;
+
+            this.ctx.strokeStyle = `hsla(${hue}, 90%, 60%, ${alpha})`;
+            this.ctx.lineWidth = 2 + bass * 3;
+            this.ctx.lineCap = "round";
+            this.ctx.lineJoin = "round";
+            this.ctx.stroke();
         }
-      }
 
-      this.ctx.closePath();
-
-      const hue = (this.hueOffset + layer * 60) % 360;
-      const avgAudio = layerData.reduce((a, b) => a + b, 0) / layerData.length;
-
-      // Fill with gradient
-      const fillGradient = this.ctx.createRadialGradient(0, 0, 0, 0, 0, layerRadius);
-      fillGradient.addColorStop(0, `hsla(${hue}, 100%, 50%, 0)`);
-      fillGradient.addColorStop(0.8, `hsla(${hue}, 100%, 50%, ${avgAudio * 0.2})`);
-      fillGradient.addColorStop(1, `hsla(${hue}, 100%, 50%, 0)`);
-
-      this.ctx.fillStyle = fillGradient;
-      this.ctx.fill();
-
-      // Stroke
-      this.ctx.strokeStyle = `hsla(${hue}, 100%, 70%, ${0.5 + avgAudio * 0.5})`;
-      this.ctx.lineWidth = 2;
-      this.ctx.stroke();
+        this.ctx.restore();
     }
 
-    this.ctx.restore();
-  }
+    drawSacredGeometry(data, bass, mid) {
+        const rings = 6;
+        const petals = 6;
+        const baseRadius = Math.min(this.width, this.height) * 0.12;
 
-  drawSpiralWaves(data, colors, intensity) {
-    const spirals = 3;
+        this.ctx.save();
+        this.ctx.translate(this.centerX, this.centerY);
+        this.ctx.rotate(this.flowerRotation);
+        this.ctx.scale(this.breathScale, this.breathScale);
 
-    this.ctx.save();
-    this.ctx.translate(this.centerX, this.centerY);
+        // Flower of life pattern
+        for (let ring = 0; ring < rings; ring++) {
+            const ringRadius = baseRadius * (ring + 1) * 0.5;
+            const circleCount = ring === 0 ? 1 : ring * 6;
 
-    for (let s = 0; s < spirals; s++) {
-      this.ctx.rotate((Math.PI * 2 / spirals));
+            for (let i = 0; i < circleCount; i++) {
+                const angle =
+                    (i / circleCount) * Math.PI * 2 +
+                    ((ring % 2) * Math.PI) / circleCount;
+                const cx = ring === 0 ? 0 : Math.cos(angle) * ringRadius;
+                const cy = ring === 0 ? 0 : Math.sin(angle) * ringRadius;
 
-      this.ctx.beginPath();
+                const dataIdx = Math.floor(
+                    (i / circleCount) * data.length * 0.5,
+                );
+                const audioMod = (data[dataIdx] || 0) / 255;
 
-      const points = 100;
-      for (let i = 0; i < points; i++) {
-        const t = i / points;
-        const angle = this.spiralAngle + t * Math.PI * 4 + s;
-        const radiusBase = t * Math.min(this.width, this.height) * 0.4;
+                const circleRadius = baseRadius * (0.8 + audioMod * 0.4);
+                const hue = (this.hueOffset + ring * 30 + i * 10) % 360;
+                const alpha = 0.15 + audioMod * 0.2;
 
-        const dataIndex = Math.floor(t * data.length);
-        const audioMod = (data[dataIndex] || 0) / 255;
-        const radius = radiusBase + audioMod * 30;
-
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
-
-        if (i === 0) {
-          this.ctx.moveTo(x, y);
-        } else {
-          this.ctx.lineTo(x, y);
+                this.ctx.beginPath();
+                this.ctx.arc(cx, cy, circleRadius, 0, Math.PI * 2);
+                this.ctx.strokeStyle = `hsla(${hue}, 80%, 60%, ${alpha})`;
+                this.ctx.lineWidth = 1 + bass;
+                this.ctx.stroke();
+            }
         }
-      }
 
-      const hue = (this.hueOffset + s * 120) % 360;
-      this.ctx.strokeStyle = `hsla(${hue}, 100%, 60%, ${0.3 + intensity * 0.4})`;
-      this.ctx.lineWidth = 2;
-      this.ctx.stroke();
+        // Seed of life (inner pattern)
+        this.ctx.globalCompositeOperation = "lighter";
+        for (let i = 0; i < 7; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            const cx = i === 0 ? 0 : Math.cos(angle) * baseRadius * 0.5;
+            const cy = i === 0 ? 0 : Math.sin(angle) * baseRadius * 0.5;
+
+            const hue = (this.hueOffset + i * 51) % 360;
+
+            this.ctx.beginPath();
+            this.ctx.arc(cx, cy, baseRadius * 0.5, 0, Math.PI * 2);
+
+            const gradient = this.ctx.createRadialGradient(
+                cx,
+                cy,
+                0,
+                cx,
+                cy,
+                baseRadius * 0.5,
+            );
+            gradient.addColorStop(
+                0,
+                `hsla(${hue}, 100%, 70%, ${0.3 + bass * 0.3})`,
+            );
+            gradient.addColorStop(1, "transparent");
+
+            this.ctx.fillStyle = gradient;
+            this.ctx.fill();
+        }
+        this.ctx.globalCompositeOperation = "source-over";
+
+        this.ctx.restore();
     }
 
-    this.ctx.restore();
-  }
+    drawFractalSpirograph(data, avg) {
+        const arms = 8;
+        const points = 150;
+        const maxRadius = Math.min(this.width, this.height) * 0.35;
 
-  drawKaleidoscope(data, colors, intensity) {
-    if (intensity < 0.3) return;
+        this.ctx.save();
+        this.ctx.translate(this.centerX, this.centerY);
 
-    const segments = 8;
-    const sliceAngle = (Math.PI * 2) / segments;
+        for (let arm = 0; arm < arms; arm++) {
+            this.ctx.rotate((Math.PI * 2) / arms);
 
-    this.ctx.save();
-    this.ctx.translate(this.centerX, this.centerY);
-    this.ctx.rotate(this.kaleidoscopeAngle);
+            this.ctx.beginPath();
 
-    for (let i = 0; i < segments; i++) {
-      this.ctx.save();
-      this.ctx.rotate(sliceAngle * i);
+            for (let i = 0; i < points; i++) {
+                const t = i / points;
+                const dataIdx = Math.floor(t * data.length);
+                const audioMod = (data[dataIdx] || 0) / 255;
 
-      if (i % 2 === 1) {
-        this.ctx.scale(1, -1);
-      }
+                // Complex spirograph formula
+                const a = maxRadius * 0.5;
+                const b = maxRadius * 0.3 * (1 + audioMod * 0.5);
+                const c = maxRadius * 0.15;
+                const tAngle = t * Math.PI * 8 + this.phase;
 
-      // Draw slice content
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, 0);
+                const x =
+                    (a - b) * Math.cos(tAngle) +
+                    c * Math.cos(((a - b) / b) * tAngle + this.time);
+                const y =
+                    (a - b) * Math.sin(tAngle) -
+                    c * Math.sin(((a - b) / b) * tAngle + this.time);
 
-      const radius = Math.min(this.width, this.height) * 0.4;
+                if (i === 0) {
+                    this.ctx.moveTo(x, y);
+                } else {
+                    this.ctx.lineTo(x, y);
+                }
+            }
 
-      for (let j = 0; j <= 20; j++) {
-        const t = j / 20;
-        const angle = t * sliceAngle;
-        const dataIndex = Math.floor(t * data.length);
-        const audioMod = (data[dataIndex] - 128) / 128;
-        const r = radius * (0.8 + audioMod * 0.2 * intensity);
+            const hue = (this.hueOffset + arm * 45) % 360;
+            this.ctx.strokeStyle = `hsla(${hue}, 100%, 65%, ${0.3 + avg * 0.4})`;
+            this.ctx.lineWidth = 1.5;
+            this.ctx.stroke();
+        }
 
-        this.ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
-      }
-
-      this.ctx.closePath();
-
-      const hue = (this.hueOffset + i * 45) % 360;
-      this.ctx.fillStyle = `hsla(${hue}, 80%, 50%, ${intensity * 0.1})`;
-      this.ctx.fill();
-
-      this.ctx.restore();
+        this.ctx.restore();
     }
 
-    this.ctx.restore();
-  }
+    drawKaleidoscope(data, bass, mid, treble) {
+        const segments = 12;
+        const sliceAngle = (Math.PI * 2) / segments;
+        const radius = Math.min(this.width, this.height) * 0.4;
 
-  drawPulsingRings(bands, colors) {
-    const ringCount = 5;
-    const maxRadius = Math.min(this.width, this.height) * 0.45;
-    const bassNorm = bands.bass / 255;
-    const midNorm = bands.mid / 255;
+        this.ctx.save();
+        this.ctx.translate(this.centerX, this.centerY);
+        this.ctx.rotate(this.phase * 0.1);
 
-    this.ctx.save();
-    this.ctx.translate(this.centerX, this.centerY);
+        for (let seg = 0; seg < segments; seg++) {
+            this.ctx.save();
+            this.ctx.rotate(sliceAngle * seg);
 
-    for (let i = 0; i < ringCount; i++) {
-      const baseRadius = (i + 1) / ringCount * maxRadius;
-      const pulseAmount = (i % 2 === 0 ? bassNorm : midNorm) * 20;
-      const radius = baseRadius + Math.sin(this.time * 2 + i) * pulseAmount;
+            if (seg % 2 === 1) {
+                this.ctx.scale(1, -1);
+            }
 
-      const hue = (this.hueOffset + i * 72) % 360;
-      const alpha = 0.3 + (1 - i / ringCount) * 0.3;
+            // Create slice path
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, 0);
 
-      this.applyGlow(`hsl(${hue}, 100%, 50%)`, 10 + bassNorm * 15);
+            const slicePoints = 30;
+            for (let i = 0; i <= slicePoints; i++) {
+                const t = i / slicePoints;
+                const angle = t * sliceAngle;
+                const dataIdx = Math.floor(t * data.length);
+                const audioMod = (data[dataIdx] - 128) / 128;
 
-      this.ctx.beginPath();
-      this.ctx.arc(0, 0, radius, 0, Math.PI * 2);
-      this.ctx.strokeStyle = `hsla(${hue}, 100%, 60%, ${alpha})`;
-      this.ctx.lineWidth = 2 + bassNorm * 3;
-      this.ctx.stroke();
+                const wave = Math.sin(t * Math.PI * 4 + this.phase) * 20 * mid;
+                const r = radius * (0.5 + t * 0.5) + audioMod * 30 + wave;
+
+                this.ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+            }
+            this.ctx.closePath();
+
+            // Gradient fill
+            const hue = (this.hueOffset + seg * 30) % 360;
+            const gradient = this.ctx.createLinearGradient(0, 0, radius, 0);
+            gradient.addColorStop(0, `hsla(${hue}, 100%, 50%, 0.05)`);
+            gradient.addColorStop(
+                0.5,
+                `hsla(${(hue + 30) % 360}, 100%, 60%, ${0.1 + bass * 0.1})`,
+            );
+            gradient.addColorStop(
+                1,
+                `hsla(${(hue + 60) % 360}, 100%, 50%, 0.05)`,
+            );
+
+            this.ctx.fillStyle = gradient;
+            this.ctx.fill();
+
+            // Edge glow
+            this.ctx.strokeStyle = `hsla(${hue}, 100%, 70%, ${0.3 + treble * 0.3})`;
+            this.ctx.lineWidth = 1;
+            this.ctx.stroke();
+
+            this.ctx.restore();
+        }
+
+        this.ctx.restore();
     }
 
-    this.ctx.restore();
-    this.resetGlow();
-  }
+    drawCentralMandala(data, bands) {
+        const bass = bands.bass / 255;
+        const mid = bands.mid / 255;
+        const layers = 8;
+        const baseRadius = Math.min(this.width, this.height) * 0.08;
 
-  applyColorShift(intensity) {
-    // Subtle color overlay that shifts with time
-    const hue = this.hueOffset % 360;
+        this.ctx.save();
+        this.ctx.translate(this.centerX, this.centerY);
+        this.ctx.rotate(-this.flowerRotation * 0.5);
 
-    this.ctx.globalCompositeOperation = 'overlay';
-    this.ctx.fillStyle = `hsla(${hue}, 100%, 50%, ${intensity * 0.05})`;
-    this.ctx.fillRect(0, 0, this.width, this.height);
-    this.ctx.globalCompositeOperation = 'source-over';
-  }
+        for (let layer = 0; layer < layers; layer++) {
+            const layerRadius =
+                baseRadius * (1 + layer * 0.5) * (1 + bass * 0.3);
+            const petalCount = 6 + layer * 2;
+            const dataOffset = layer * 20;
+
+            for (let p = 0; p < petalCount; p++) {
+                const angle = (p / petalCount) * Math.PI * 2;
+                const dataIdx = (dataOffset + p * 5) % data.length;
+                const audioMod = (data[dataIdx] || 0) / 255;
+
+                // Petal shape
+                this.ctx.save();
+                this.ctx.rotate(angle);
+
+                const petalLength = layerRadius * (0.8 + audioMod * 0.6);
+                const petalWidth = layerRadius * 0.3 * (1 + mid * 0.5);
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, 0);
+                this.ctx.quadraticCurveTo(
+                    petalWidth,
+                    petalLength * 0.5,
+                    0,
+                    petalLength,
+                );
+                this.ctx.quadraticCurveTo(-petalWidth, petalLength * 0.5, 0, 0);
+
+                const hue = (this.hueOffset + layer * 25 + p * 15) % 360;
+                const gradient = this.ctx.createLinearGradient(
+                    0,
+                    0,
+                    0,
+                    petalLength,
+                );
+                gradient.addColorStop(
+                    0,
+                    `hsla(${hue}, 100%, 50%, ${0.5 + audioMod * 0.3})`,
+                );
+                gradient.addColorStop(
+                    1,
+                    `hsla(${(hue + 40) % 360}, 100%, 60%, 0.1)`,
+                );
+
+                this.ctx.fillStyle = gradient;
+                this.ctx.fill();
+
+                this.ctx.restore();
+            }
+        }
+
+        // Central core
+        const coreGradient = this.ctx.createRadialGradient(
+            0,
+            0,
+            0,
+            0,
+            0,
+            baseRadius,
+        );
+        const coreHue = this.hueOffset % 360;
+        coreGradient.addColorStop(
+            0,
+            `hsla(${coreHue}, 100%, 90%, ${0.8 + bass * 0.2})`,
+        );
+        coreGradient.addColorStop(
+            0.5,
+            `hsla(${(coreHue + 60) % 360}, 100%, 60%, 0.6)`,
+        );
+        coreGradient.addColorStop(
+            1,
+            `hsla(${(coreHue + 120) % 360}, 100%, 50%, 0)`,
+        );
+
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, baseRadius * (1 + bass * 0.5), 0, Math.PI * 2);
+        this.ctx.fillStyle = coreGradient;
+        this.ctx.fill();
+
+        this.ctx.restore();
+    }
+
+    drawAurora(data, bass, treble) {
+        const waveCount = 5;
+        const points = 100;
+
+        this.ctx.save();
+        this.ctx.globalCompositeOperation = "lighter";
+
+        for (let w = 0; w < waveCount; w++) {
+            const yBase = this.height * (0.2 + w * 0.15);
+            const amplitude = 50 + bass * 80;
+            const phaseOffset = w * 0.5 + this.phase * 0.3;
+
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, yBase);
+
+            for (let i = 0; i <= points; i++) {
+                const t = i / points;
+                const x = t * this.width;
+                const dataIdx = Math.floor(t * data.length);
+                const audioMod = (data[dataIdx] || 0) / 255;
+
+                const wave1 =
+                    Math.sin(t * Math.PI * 2 + phaseOffset) * amplitude;
+                const wave2 =
+                    Math.sin(t * Math.PI * 4 + phaseOffset * 1.5) *
+                    amplitude *
+                    0.5;
+                const audioWave = audioMod * 40;
+
+                const y = yBase + wave1 + wave2 + audioWave;
+                this.ctx.lineTo(x, y);
+            }
+
+            // Close the path for fill
+            this.ctx.lineTo(this.width, this.height);
+            this.ctx.lineTo(0, this.height);
+            this.ctx.closePath();
+
+            const hue = (this.hueOffset + w * 40) % 360;
+            const gradient = this.ctx.createLinearGradient(
+                0,
+                yBase - amplitude,
+                0,
+                this.height,
+            );
+            gradient.addColorStop(
+                0,
+                `hsla(${hue}, 100%, 60%, ${0.1 + treble * 0.15})`,
+            );
+            gradient.addColorStop(
+                0.5,
+                `hsla(${(hue + 30) % 360}, 100%, 50%, 0.05)`,
+            );
+            gradient.addColorStop(1, "transparent");
+
+            this.ctx.fillStyle = gradient;
+            this.ctx.fill();
+        }
+
+        this.ctx.globalCompositeOperation = "source-over";
+        this.ctx.restore();
+    }
+
+    applyChromaEffect(intensity) {
+        if (intensity < 0.4) return;
+
+        const offset = intensity * 3;
+
+        // Subtle RGB shift effect
+        this.ctx.globalCompositeOperation = "lighter";
+        this.ctx.globalAlpha = intensity * 0.1;
+
+        // Red channel shift
+        this.ctx.drawImage(this.canvas, -offset, 0);
+
+        // Blue channel shift
+        this.ctx.drawImage(this.canvas, offset, 0);
+
+        this.ctx.globalAlpha = 1;
+        this.ctx.globalCompositeOperation = "source-over";
+
+        // Vignette
+        const vignetteGradient = this.ctx.createRadialGradient(
+            this.centerX,
+            this.centerY,
+            0,
+            this.centerX,
+            this.centerY,
+            Math.max(this.width, this.height) * 0.7,
+        );
+        vignetteGradient.addColorStop(0, "transparent");
+        vignetteGradient.addColorStop(0.7, "transparent");
+        vignetteGradient.addColorStop(
+            1,
+            `rgba(0, 0, 0, ${0.3 + (1 - intensity) * 0.2})`,
+        );
+
+        this.ctx.fillStyle = vignetteGradient;
+        this.ctx.fillRect(0, 0, this.width, this.height);
+    }
 }
 
 // Export
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = PsychedelicVisualizer;
+if (typeof module !== "undefined" && module.exports) {
+    module.exports = PsychedelicVisualizer;
 }
