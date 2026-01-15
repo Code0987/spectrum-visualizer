@@ -25,12 +25,8 @@ class BarsVisualizer extends BaseVisualizer {
             this.height <= 0
         ) {
             this.handleResize();
-            this.clear();
             return;
         }
-
-        // Clear canvas first
-        this.clear();
 
         const data = this.getProcessedData();
         if (!data || data.length === 0) return;
@@ -73,9 +69,11 @@ class BarsVisualizer extends BaseVisualizer {
         }
 
         const totalWidth = this.width * 0.92;
-        const barWidth =
-            (totalWidth - (barCount - 1) * this.settings.barSpacing) / barCount;
-        const startX = (this.width - totalWidth) / 2;
+        const barWidth = Math.max(
+            1,
+            (totalWidth - (barCount - 1) * this.settings.barSpacing) / barCount,
+        );
+        const startX = Math.max(0, (this.width - totalWidth) / 2);
         const maxHeight = this.height * 0.75;
         const baseY = this.height * 0.88;
 

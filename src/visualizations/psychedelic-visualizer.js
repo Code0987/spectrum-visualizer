@@ -26,7 +26,6 @@ class PsychedelicVisualizer extends BaseVisualizer {
             this.height <= 0
         ) {
             this.handleResize();
-            this.clear();
             return;
         }
 
@@ -34,7 +33,6 @@ class PsychedelicVisualizer extends BaseVisualizer {
         const timeDomainData = this.audioProcessor.getTimeDomainData();
 
         if (!frequencyData || !timeDomainData) {
-            this.clear();
             return;
         }
 
