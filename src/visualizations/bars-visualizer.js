@@ -29,12 +29,21 @@ class BarsVisualizer extends BaseVisualizer {
             return;
         }
 
+        // Clear canvas first
+        this.clear();
+
         const data = this.getProcessedData();
+        if (!data || data.length === 0) return;
+
         const colors = this.getColors();
         const barCount = data.length;
-        const bands = this.audioProcessor.getFrequencyBands();
-        const bass = bands.bass / 255 || 0;
-        const avg = this.audioProcessor.getAverageFrequency() / 255 || 0;
+        const bands = this.audioProcessor.getFrequencyBands() || {
+            bass: 0,
+            mid: 0,
+            treble: 0,
+        };
+        const bass = (bands.bass || 0) / 255;
+        const avg = (this.audioProcessor.getAverageFrequency() || 0) / 255;
 
         this.waveOffset += deltaTime * 2 * this.settings.animationSpeed;
 

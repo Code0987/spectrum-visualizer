@@ -32,11 +32,21 @@ class PsychedelicVisualizer extends BaseVisualizer {
 
         const frequencyData = this.audioProcessor.getFrequencyData();
         const timeDomainData = this.audioProcessor.getTimeDomainData();
-        const bands = this.audioProcessor.getFrequencyBands();
-        const avg = this.audioProcessor.getAverageFrequency() / 255 || 0;
-        const bass = bands.bass / 255 || 0;
-        const mid = bands.mid / 255 || 0;
-        const treble = bands.treble / 255 || 0;
+
+        if (!frequencyData || !timeDomainData) {
+            this.clear();
+            return;
+        }
+
+        const bands = this.audioProcessor.getFrequencyBands() || {
+            bass: 0,
+            mid: 0,
+            treble: 0,
+        };
+        const avg = (this.audioProcessor.getAverageFrequency() || 0) / 255;
+        const bass = (bands.bass || 0) / 255;
+        const mid = (bands.mid || 0) / 255;
+        const treble = (bands.treble || 0) / 255;
 
         const speed = this.settings.animationSpeed;
 
@@ -49,7 +59,7 @@ class PsychedelicVisualizer extends BaseVisualizer {
         this.noiseOffset += deltaTime * 50;
 
         // Create motion blur / trail effect
-        this.ctx.fillStyle = `rgba(10, 10, 15, ${0.15 + (1 - avg) * 0.15})`;
+        this.ctx.fillStyle = `rgba(10, 10, 15, ${0.12 + (1 - avg) * 0.18})`;
         this.ctx.fillRect(0, 0, this.width, this.height);
 
         // Layer 1: Deep space warp background
@@ -145,12 +155,15 @@ class PsychedelicVisualizer extends BaseVisualizer {
 
             this.ctx.beginPath();
 
+            let avgAudioMod = 0;
+
             for (let i = 0; i <= points; i++) {
                 const t = i / points;
                 const angle = t * Math.PI * 4 + ribbonPhase;
 
                 const dataIdx = Math.floor(t * data.length * 0.8);
                 const audioMod = (data[dataIdx] || 0) / 255;
+                avgAudioMod += audioMod;
 
                 const radiusWave =
                     Math.sin(angle * 3 + this.time * 2) * 30 * mid;
@@ -167,8 +180,9 @@ class PsychedelicVisualizer extends BaseVisualizer {
                 }
             }
 
+            avgAudioMod /= points;
             const hue = (this.hueOffset + r * 72) % 360;
-            const alpha = 0.4 + audioMod * 0.4;
+            const alpha = 0.4 + avgAudioMod * 0.4;
 
             this.ctx.strokeStyle = `hsla(${hue}, 90%, 60%, ${alpha})`;
             this.ctx.lineWidth = 2 + bass * 3;
