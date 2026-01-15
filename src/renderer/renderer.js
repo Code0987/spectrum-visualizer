@@ -614,9 +614,74 @@ class App {
     toggleFullscreen() {
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen();
+            this.setupFullscreenHandlers();
         } else {
             document.exitFullscreen();
         }
+    }
+
+    setupFullscreenHandlers() {
+        // Track mouse movement for showing controls and cursor
+        let mouseTimeout = null;
+        let controlsTimeout = null;
+        const html = document.documentElement;
+
+        const hideControls = () => {
+            html.classList.remove("show-controls");
+        };
+
+        const hideCursor = () => {
+            html.classList.add("hide-cursor");
+        };
+
+        const showControlsAndCursor = () => {
+            html.classList.remove("hide-cursor");
+
+            // Clear existing timeouts
+            if (mouseTimeout) clearTimeout(mouseTimeout);
+            if (controlsTimeout) clearTimeout(controlsTimeout);
+
+            // Check if mouse is near edges to show controls
+            const mouseX = this._lastMouseX || 0;
+            const mouseY = this._lastMouseY || 0;
+
+            // Show controls if mouse is at top or left edge
+            if (mouseY < 100 || mouseX < 50) {
+                html.classList.add("show-controls");
+                controlsTimeout = setTimeout(hideControls, 2000);
+            }
+
+            // Hide cursor after 3 seconds of no movement
+            mouseTimeout = setTimeout(hideCursor, 3000);
+        };
+
+        const onMouseMove = (e) => {
+            if (!document.fullscreenElement) return;
+
+            this._lastMouseX = e.clientX;
+            this._lastMouseY = e.clientY;
+            showControlsAndCursor();
+        };
+
+        const onFullscreenChange = () => {
+            if (!document.fullscreenElement) {
+                // Exiting fullscreen - cleanup
+                html.classList.remove("show-controls", "hide-cursor");
+                document.removeEventListener("mousemove", onMouseMove);
+                document.removeEventListener(
+                    "fullscreenchange",
+                    onFullscreenChange,
+                );
+                if (mouseTimeout) clearTimeout(mouseTimeout);
+                if (controlsTimeout) clearTimeout(controlsTimeout);
+            }
+        };
+
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("fullscreenchange", onFullscreenChange);
+
+        // Initially hide cursor after a delay
+        mouseTimeout = setTimeout(hideCursor, 3000);
     }
 
     // Export
