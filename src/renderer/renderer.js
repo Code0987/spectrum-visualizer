@@ -717,14 +717,18 @@ class App {
                     `${Math.round(progress)}%`;
             };
 
-            await this.videoExporter.startRecording(this.canvas);
+            // Pass audio processor for audio capture
+            await this.videoExporter.startRecording(
+                this.canvas,
+                this.audioProcessor,
+            );
 
             // Record for a duration or until stopped
             const duration = this.audioProcessor.getDuration() || 10; // Default 10 seconds
 
             // Simulate progress for recording
             const startTime = Date.now();
-            const progressInterval = setInterval(() => {
+            this._exportProgressInterval = setInterval(() => {
                 const elapsed = (Date.now() - startTime) / 1000;
                 const progress = Math.min((elapsed / duration) * 100, 100);
                 document.getElementById("export-progress-fill").style.width =
@@ -733,14 +737,14 @@ class App {
                     `${Math.round(progress)}%`;
 
                 if (progress >= 100) {
-                    clearInterval(progressInterval);
+                    clearInterval(this._exportProgressInterval);
                     this.finishExport();
                 }
             }, 100);
 
             // Auto-stop after duration
-            setTimeout(() => {
-                clearInterval(progressInterval);
+            this._exportTimeout = setTimeout(() => {
+                clearInterval(this._exportProgressInterval);
                 this.finishExport();
             }, duration * 1000);
         } catch (error) {
@@ -793,6 +797,16 @@ class App {
     }
 
     cancelExport() {
+        // Clear timers
+        if (this._exportProgressInterval) {
+            clearInterval(this._exportProgressInterval);
+            this._exportProgressInterval = null;
+        }
+        if (this._exportTimeout) {
+            clearTimeout(this._exportTimeout);
+            this._exportTimeout = null;
+        }
+
         this.videoExporter.cancelRecording();
         document.getElementById("export-modal").classList.remove("open");
     }
