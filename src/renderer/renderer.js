@@ -313,6 +313,14 @@ class App {
                 this.videoExporter.updateSettings({ format: e.target.value });
             });
 
+        document
+            .getElementById("export-duration")
+            .addEventListener("change", (e) => {
+                this.videoExporter.updateSettings({
+                    duration: parseInt(e.target.value),
+                });
+            });
+
         // Initialize settings from UI on startup
         this.syncSettingsFromUI();
     }
@@ -338,6 +346,9 @@ class App {
             resolution: document.getElementById("export-resolution").value,
             fps: document.getElementById("export-fps").value,
             format: document.getElementById("export-format").value,
+            duration: parseInt(
+                document.getElementById("export-duration").value,
+            ),
         });
     }
 
@@ -710,8 +721,17 @@ class App {
         const modal = document.getElementById("export-modal");
         modal.classList.add("open");
 
+        // Calculate duration for display
+        const settingsDuration = this.videoExporter.settings.duration;
+        const audioDuration = this.audioProcessor.getDuration() || 30;
+        const exportDuration =
+            settingsDuration === 0
+                ? audioDuration
+                : Math.min(settingsDuration, audioDuration);
+
         // Update status
-        document.getElementById("export-status").textContent = "Recording...";
+        document.getElementById("export-status").textContent =
+            `Recording ${Math.round(exportDuration)}s of video...`;
         document.getElementById("export-progress-fill").style.width = "0%";
         document.getElementById("export-progress-text").textContent = "0%";
 
@@ -730,8 +750,13 @@ class App {
                 this.audioProcessor,
             );
 
-            // Record for a duration or until stopped
-            const duration = this.audioProcessor.getDuration() || 10; // Default 10 seconds
+            // Get export duration from settings (0 = full track)
+            const settingsDuration = this.videoExporter.settings.duration;
+            const audioDuration = this.audioProcessor.getDuration() || 30;
+            const duration =
+                settingsDuration === 0
+                    ? audioDuration
+                    : Math.min(settingsDuration, audioDuration);
 
             // Simulate progress for recording
             const startTime = Date.now();

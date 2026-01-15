@@ -16,6 +16,7 @@ class VideoExporter {
             resolution: "1080",
             fps: 30,
             format: "mp4",
+            duration: 30, // Export duration in seconds (0 = full track)
             bitrate: 8000000, // 8 Mbps
         };
 
