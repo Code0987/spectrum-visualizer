@@ -16,13 +16,25 @@ class CircularVisualizer extends BaseVisualizer {
     }
 
     draw(deltaTime) {
+        // Safety check for canvas dimensions
+        if (
+            !this.width ||
+            !this.height ||
+            this.width <= 0 ||
+            this.height <= 0
+        ) {
+            this.handleResize();
+            this.clear();
+            return;
+        }
+
         const data = this.getProcessedData(128);
         const colors = this.getColors();
-        const avg = this.audioProcessor.getAverageFrequency() / 255;
+        const avg = this.audioProcessor.getAverageFrequency() / 255 || 0;
         const bands = this.audioProcessor.getFrequencyBands();
-        const bass = bands.bass / 255;
-        const mid = bands.mid / 255;
-        const treble = bands.treble / 255;
+        const bass = bands.bass / 255 || 0;
+        const mid = bands.mid / 255 || 0;
+        const treble = bands.treble / 255 || 0;
 
         // Update animations
         this.rotation +=

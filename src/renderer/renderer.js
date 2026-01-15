@@ -75,6 +75,13 @@ class App {
     }
 
     initVisualizers() {
+        // Ensure canvas has proper dimensions before creating visualizers
+        const container = this.canvasContainer;
+        if (container) {
+            this.canvas.width = container.clientWidth || 800;
+            this.canvas.height = container.clientHeight || 600;
+        }
+
         this.visualizers = {
             bars: new BarsVisualizer(this.canvas, this.audioProcessor),
             waveform: new WaveformVisualizer(this.canvas, this.audioProcessor),
@@ -95,6 +102,9 @@ class App {
         Object.values(this.visualizers).forEach((v) =>
             v.setTheme(this.currentTheme),
         );
+
+        // Trigger resize on all visualizers to ensure proper dimensions
+        Object.values(this.visualizers).forEach((v) => v.handleResize());
     }
 
     setupEventListeners() {

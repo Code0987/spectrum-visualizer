@@ -17,12 +17,24 @@ class BarsVisualizer extends BaseVisualizer {
     }
 
     draw(deltaTime) {
+        // Safety check for canvas dimensions
+        if (
+            !this.width ||
+            !this.height ||
+            this.width <= 0 ||
+            this.height <= 0
+        ) {
+            this.handleResize();
+            this.clear();
+            return;
+        }
+
         const data = this.getProcessedData();
         const colors = this.getColors();
         const barCount = data.length;
         const bands = this.audioProcessor.getFrequencyBands();
-        const bass = bands.bass / 255;
-        const avg = this.audioProcessor.getAverageFrequency() / 255;
+        const bass = bands.bass / 255 || 0;
+        const avg = this.audioProcessor.getAverageFrequency() / 255 || 0;
 
         this.waveOffset += deltaTime * 2 * this.settings.animationSpeed;
 

@@ -18,13 +18,25 @@ class PsychedelicVisualizer extends BaseVisualizer {
     }
 
     draw(deltaTime) {
+        // Safety check for canvas dimensions
+        if (
+            !this.width ||
+            !this.height ||
+            this.width <= 0 ||
+            this.height <= 0
+        ) {
+            this.handleResize();
+            this.clear();
+            return;
+        }
+
         const frequencyData = this.audioProcessor.getFrequencyData();
         const timeDomainData = this.audioProcessor.getTimeDomainData();
         const bands = this.audioProcessor.getFrequencyBands();
-        const avg = this.audioProcessor.getAverageFrequency() / 255;
-        const bass = bands.bass / 255;
-        const mid = bands.mid / 255;
-        const treble = bands.treble / 255;
+        const avg = this.audioProcessor.getAverageFrequency() / 255 || 0;
+        const bass = bands.bass / 255 || 0;
+        const mid = bands.mid / 255 || 0;
+        const treble = bands.treble / 255 || 0;
 
         const speed = this.settings.animationSpeed;
 

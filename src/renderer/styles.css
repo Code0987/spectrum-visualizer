@@ -565,10 +565,13 @@ body {
     position: relative;
     background: var(--bg-dark);
     overflow: hidden;
+    min-width: 200px;
+    min-height: 200px;
 }
 
 #visualizer-canvas,
 #three-canvas {
+    display: block;
     position: absolute;
     top: 0;
     left: 0;

@@ -21,15 +21,29 @@ class ParticlesVisualizer extends BaseVisualizer {
     }
 
     initFlowField() {
-        this.flowFieldCols = Math.ceil(this.width / this.flowFieldResolution);
-        this.flowFieldRows = Math.ceil(this.height / this.flowFieldResolution);
+        // Safety check for valid dimensions
+        if (
+            !this.width ||
+            !this.height ||
+            this.width <= 0 ||
+            this.height <= 0
+        ) {
+            return;
+        }
+        this.flowFieldCols =
+            Math.ceil(this.width / this.flowFieldResolution) || 1;
+        this.flowFieldRows =
+            Math.ceil(this.height / this.flowFieldResolution) || 1;
         this.flowField = new Array(
             this.flowFieldCols * this.flowFieldRows,
         ).fill(0);
     }
 
     updateFlowField(bands) {
-        if (this.flowFieldCols === 0) this.initFlowField();
+        if (this.flowFieldCols === 0 || this.flowFieldRows === 0) {
+            this.initFlowField();
+            if (this.flowFieldCols === 0) return; // Still not ready
+        }
 
         const bass = bands.bass / 255;
         const mid = bands.mid / 255;
@@ -60,13 +74,25 @@ class ParticlesVisualizer extends BaseVisualizer {
     }
 
     draw(deltaTime) {
+        // Safety check for canvas dimensions
+        if (
+            !this.width ||
+            !this.height ||
+            this.width <= 0 ||
+            this.height <= 0
+        ) {
+            this.handleResize();
+            this.clear();
+            return;
+        }
+
         const frequencyData = this.audioProcessor.getFrequencyData();
         const bands = this.audioProcessor.getFrequencyBands();
         const colors = this.getColors();
-        const avg = this.audioProcessor.getAverageFrequency() / 255;
-        const bass = bands.bass / 255;
-        const mid = bands.mid / 255;
-        const treble = bands.treble / 255;
+        const avg = this.audioProcessor.getAverageFrequency() / 255 || 0;
+        const bass = bands.bass / 255 || 0;
+        const mid = bands.mid / 255 || 0;
+        const treble = bands.treble / 255 || 0;
 
         // Motion blur effect
         this.ctx.fillStyle = `rgba(10, 10, 15, ${0.1 + (1 - avg) * 0.15})`;
