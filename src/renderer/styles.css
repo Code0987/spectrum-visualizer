@@ -959,27 +959,35 @@ input[type="range"]::-webkit-slider-thumb:hover {
    FULLSCREEN MODE
    ============================================ */
 
-/* Hide UI elements in fullscreen */
+/* Hide ALL UI elements in fullscreen immediately */
 :fullscreen .header,
 :-webkit-full-screen .header,
 :-moz-full-screen .header {
-    transform: translateY(-100%);
-    opacity: 0;
-    pointer-events: none;
+    display: none !important;
 }
 
 :fullscreen .sidebar,
 :-webkit-full-screen .sidebar,
 :-moz-full-screen .sidebar {
-    transform: translateX(-100%);
-    opacity: 0;
-    pointer-events: none;
+    display: none !important;
 }
 
 :fullscreen .settings-panel,
 :-webkit-full-screen .settings-panel,
 :-moz-full-screen .settings-panel {
-    display: none;
+    display: none !important;
+}
+
+:fullscreen .drop-zone,
+:-webkit-full-screen .drop-zone,
+:-moz-full-screen .drop-zone {
+    display: none !important;
+}
+
+:fullscreen .modal,
+:-webkit-full-screen .modal,
+:-moz-full-screen .modal {
+    display: none !important;
 }
 
 /* Make canvas container fill the screen */
@@ -1047,39 +1055,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
     padding: 2px 8px;
     margin: 0 4px;
     font-family: inherit;
-}
-
-/* Show controls on mouse move to top/left edges in fullscreen */
-:fullscreen .header,
-:-webkit-full-screen .header,
-:-moz-full-screen .header {
-    transition:
-        transform 0.3s ease,
-        opacity 0.3s ease;
-}
-
-:fullscreen .sidebar,
-:-webkit-full-screen .sidebar,
-:-moz-full-screen .sidebar {
-    transition:
-        transform 0.3s ease,
-        opacity 0.3s ease;
-}
-
-:fullscreen.show-controls .header,
-:-webkit-full-screen.show-controls .header,
-:-moz-full-screen.show-controls .header {
-    transform: translateY(0);
-    opacity: 1;
-    pointer-events: auto;
-}
-
-:fullscreen.show-controls .sidebar,
-:-webkit-full-screen.show-controls .sidebar,
-:-moz-full-screen.show-controls .sidebar {
-    transform: translateX(0);
-    opacity: 1;
-    pointer-events: auto;
 }
 
 /* Cursor hide in fullscreen after inactivity */
